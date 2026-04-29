@@ -45,8 +45,8 @@ Start typing letters to filter, use ↑↓ to navigate, Enter to run, Esc to can
 
 | Command              | Description                                       |
 |----------------------|---------------------------------------------------|
-| `/list`              | Show all available models with prices             |
-| `/help`              | Show this command list                            |
+| `/select_model`      | Switch to a different model                       |
+| `/help`              | Show the command list in the terminal             |
 | `/exit`              | Save and quit                                     |
 | `/enable_websearch`  | Enable web search (requires a compatible model)   |
 | `/disable_websearch` | Disable web search                                |
@@ -54,15 +54,38 @@ Start typing letters to filter, use ↑↓ to navigate, Enter to run, Esc to can
 | `/new`               | Start a fresh chat session                        |
 | `/name`              | Rename the current session                        |
 | `/chats`             | Browse saved sessions and load one                |
+| `/delete`            | Delete the current session (with confirmation)    |
 
 ### Keyboard shortcuts
-- `Ctrl-C` — save and exit
-- `Backspace` — delete last character
+
+| Key | Action |
+|-----|--------|
+| `Enter` | Send the prompt |
+| `Ctrl+J` | Insert a newline (multi-line input) |
+| `Alt+Enter` | Insert a newline (if terminal has Meta key enabled) |
+| `↑` / `↓` | Navigate prompt history |
+| `←` / `→` | Move cursor left / right |
+| `Home` / `End` | Jump to start / end of input |
+| `Delete` | Forward-delete character under cursor |
+| `Backspace` | Delete character before cursor |
+| `Ctrl+C` | Save and exit |
+| `Ctrl+D` | Save and exit (EOF) |
+| `Esc` | Cancel current command menu |
+
+### Multi-line input
+
+Press **Ctrl+J** (or **Alt+Enter** with Meta key enabled in your terminal) to insert  
+a newline inside your message. Press **Enter** to send.
+
+> **macOS tip:** to enable Alt+Enter, go to  
+> *Terminal → Settings → Profiles → Keyboard* and check **"Use Option as Meta key"**.  
+> In iTerm2: *Preferences → Profiles → Keys → Left Option key → Esc+*.
 
 ## Chat storage
 
 Every conversation is automatically saved to `chats/YYYYMMDD_HHMMSS.json`.  
-The last session is restored automatically when you restart the app.
+The last session is restored automatically when you restart the app.  
+Sessions with no messages are never written to disk.
 
 ## Web search
 
@@ -70,4 +93,3 @@ Only `gpt-4o` and `gpt-4o-mini` support web search.
 When enabled, the app uses OpenAI's `-search-preview` model variants  
 (`gpt-4o-search-preview` / `gpt-4o-mini-search-preview`) which include  
 real-time internet results grounded in the response.
-
