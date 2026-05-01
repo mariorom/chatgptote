@@ -21,7 +21,7 @@ GEM
       tty-color (~> 0.5)
     rexml (3.4.4)
     rouge (4.7.0)
-    ruby-openai (7.4.0)
+    ruby-openai (8.3.0)
       event_stream_parser (>= 0.3.0, < 2.0.0)
       faraday (>= 1)
       faraday-multipart (>= 1)
@@ -60,7 +60,7 @@ PLATFORMS
 
 DEPENDENCIES
   pastel (~> 0.8)
-  ruby-openai (~> 7.0)
+  ruby-openai (~> 8.0)
   tty-cursor (~> 0.7)
   tty-markdown (~> 0.7)
   tty-prompt (~> 0.23)

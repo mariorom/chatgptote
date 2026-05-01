@@ -78,10 +78,16 @@ class App
     name_w = MODELS.map { |m| m[:name].length }.max
     in_w   = MODELS.map { |m| m[:input_price].length }.max
     out_w  = MODELS.map { |m| m[:output_price].length }.max
+    api_w  = 'responses'.length   # width of the longer tag
 
     choices = MODELS.map do |m|
-      ws    = m[:web_search_capable] ? @pastel.green('🔍') : '  '
-      label = "#{m[:name].ljust(name_w)}  #{ws}  " \
+      ws     = m[:web_search_capable] ? @pastel.green('🔍') : '  '
+      api_tag = if m[:responses_api]
+                  @pastel.cyan('responses'.ljust(api_w))
+                else
+                  @pastel.dim('chat     '.ljust(api_w))
+                end
+      label = "#{m[:name].ljust(name_w)}  #{ws}  #{api_tag}  " \
               "#{m[:input_price].ljust(in_w)}  " \
               "#{m[:output_price].ljust(out_w)}  " \
               "#{@pastel.dim(m[:description])}"
@@ -626,6 +632,74 @@ class App
   end
 
   def call_openai
+    if @model[:responses_api]
+      call_responses_api
+    else
+      call_chat_completions_api
+    end
+  end
+
+  # ── Responses API (stateful — uses previous_response_id) ─────────────────
+
+  def call_responses_api
+    model_id      = @model[:id]
+    use_websearch = @model[:web_search_capable] && @session.web_search_enabled
+    last_id       = @session.last_response_id
+    new_msg       = @session.messages.last[:content]
+
+    params = { model: model_id }
+
+    if last_id
+      # Continue the server-side conversation — only send the new user message.
+      params[:previous_response_id] = last_id
+      params[:input]                = new_msg
+    else
+      # First turn (or no stored ID): send full history so the model has context.
+      params[:input] = @session.messages.map { |m| { role: m[:role], content: m[:content] } }
+    end
+
+    params[:tools] = [{ type: 'web_search_preview' }] if use_websearch
+
+    # o-series reasoning models don't accept temperature
+    params[:temperature] = 0.7 unless model_id.match?(/\Ao[1-9]/)
+
+    with_rate_limit_retry do
+      response = @client.responses.create(parameters: params)
+
+      if response['error']
+        msg  = response.dig('error', 'message').to_s
+        code = response.dig('error', 'code').to_s
+        # If the previous_response_id has expired, clear it and retry with full history
+        if last_id && (code == 'invalid_value' || msg.include?('previous_response_id'))
+          @session.last_response_id = nil
+          params.delete(:previous_response_id)
+          params[:input] = @session.messages.map { |m| { role: m[:role], content: m[:content] } }
+          response = @client.responses.create(parameters: params)
+        end
+        raise response.dig('error', 'message').to_s if response['error']
+      end
+
+      # Store the new response ID for the next turn
+      @session.last_response_id = response['id']
+
+      # Extract the assistant text from the output array
+      output = response['output']
+      raise 'Empty response from API' unless output&.any?
+
+      message_item = output.find { |item| item['type'] == 'message' }
+      raise 'No message item in response' unless message_item
+
+      content   = message_item['content']
+      text_part = content&.find { |c| c['type'] == 'output_text' }
+      raise 'No text in response' unless text_part
+
+      text_part['text'].to_s.strip
+    end
+  end
+
+  # ── Chat Completions API (stateless — sends full history each time) ───────
+
+  def call_chat_completions_api
     model_id = if @model[:web_search_capable] &&
                     @session.web_search_enabled &&
                     @model[:search_id]
@@ -639,19 +713,39 @@ class App
       messages: @session.messages
     }
 
-    # o1/o3 series and search-preview models do not accept temperature
     params[:temperature] = 0.7 unless model_id.match?(/\Ao[1-9]|search-preview/)
 
-    response = @client.chat(parameters: params)
+    with_rate_limit_retry do
+      response = @client.chat(parameters: params)
 
-    if response['error']
-      raise response.dig('error', 'message').to_s
+      if response['error']
+        raise response.dig('error', 'message').to_s
+      end
+
+      choices = response['choices']
+      raise 'Empty response from API' unless choices&.any?
+
+      choices.first.dig('message', 'content').to_s.strip
     end
+  end
 
-    choices = response['choices']
-    raise 'Empty response from API' unless choices&.any?
+  # ── Shared retry wrapper for 429 rate-limit errors ────────────────────────
 
-    choices.first.dig('message', 'content').to_s.strip
+  def with_rate_limit_retry(max_retries: 4, base_delay: 5)
+    max_retries.times do |attempt|
+      return yield
+    rescue Faraday::TooManyRequestsError => e
+      raise e if attempt == max_retries - 1
+      wait = base_delay * (2**attempt)
+      $stderr.puts @pastel.yellow("\n  Rate limited — retrying in #{wait}s… (attempt #{attempt + 1}/#{max_retries})")
+      sleep wait
+    rescue StandardError => e
+      raise unless e.message.include?('429') || e.message.include?('Rate limit')
+      raise e if attempt == max_retries - 1
+      wait = base_delay * (2**attempt)
+      $stderr.puts @pastel.yellow("\n  Rate limited — retrying in #{wait}s… (attempt #{attempt + 1}/#{max_retries})")
+      sleep wait
+    end
   end
 end
 

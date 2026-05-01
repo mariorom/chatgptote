@@ -9,7 +9,8 @@ MODELS = [
     description:         'Most capable multimodal model — text, vision & reasoning',
     input_price:         '$2.50 / 1M tokens',
     output_price:        '$10.00 / 1M tokens',
-    web_search_capable:  true
+    web_search_capable:  true,
+    responses_api:       true
   },
   {
     id:                  'gpt-4o-mini',
@@ -19,7 +20,8 @@ MODELS = [
     description:         'Affordable, fast multimodal model for everyday tasks',
     input_price:         '$0.15 / 1M tokens',
     output_price:        '$0.60 / 1M tokens',
-    web_search_capable:  true
+    web_search_capable:  true,
+    responses_api:       true
   },
   {
     id:                  'chatgpt-4o-latest',
@@ -29,7 +31,8 @@ MODELS = [
     description:         'Continuously-updated GPT-4o snapshot used in ChatGPT',
     input_price:         '$5.00 / 1M tokens',
     output_price:        '$15.00 / 1M tokens',
-    web_search_capable:  false
+    web_search_capable:  false,
+    responses_api:       false
   },
   {
     id:                  'gpt-4-turbo',
@@ -39,7 +42,8 @@ MODELS = [
     description:         'High-capability GPT-4 with 128k context window',
     input_price:         '$10.00 / 1M tokens',
     output_price:        '$30.00 / 1M tokens',
-    web_search_capable:  false
+    web_search_capable:  false,
+    responses_api:       false
   },
   {
     id:                  'gpt-3.5-turbo',
@@ -49,7 +53,8 @@ MODELS = [
     description:         'Fast and cost-effective for simpler tasks',
     input_price:         '$0.50 / 1M tokens',
     output_price:        '$1.50 / 1M tokens',
-    web_search_capable:  false
+    web_search_capable:  false,
+    responses_api:       false
   },
   {
     id:                  'o1',
@@ -59,7 +64,8 @@ MODELS = [
     description:         'Powerful reasoning model for complex problem solving',
     input_price:         '$15.00 / 1M tokens',
     output_price:        '$60.00 / 1M tokens',
-    web_search_capable:  false
+    web_search_capable:  false,
+    responses_api:       true
   },
   {
     id:                  'o1-mini',
@@ -69,7 +75,8 @@ MODELS = [
     description:         'Efficient reasoning for coding, math & STEM',
     input_price:         '$3.00 / 1M tokens',
     output_price:        '$12.00 / 1M tokens',
-    web_search_capable:  false
+    web_search_capable:  false,
+    responses_api:       true
   },
   {
     id:                  'o3',
@@ -79,7 +86,8 @@ MODELS = [
     description:         'Most powerful reasoning model available',
     input_price:         '$10.00 / 1M tokens',
     output_price:        '$40.00 / 1M tokens',
-    web_search_capable:  false
+    web_search_capable:  false,
+    responses_api:       true
   },
   {
     id:                  'o3-mini',
@@ -89,7 +97,8 @@ MODELS = [
     description:         'Compact reasoning model — speed vs. capability balance',
     input_price:         '$1.10 / 1M tokens',
     output_price:        '$4.40 / 1M tokens',
-    web_search_capable:  false
+    web_search_capable:  false,
+    responses_api:       true
   }
 ].freeze
 

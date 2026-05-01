@@ -5,7 +5,7 @@ require 'time'
 require 'fileutils'
 
 class ChatSession
-  attr_accessor :name, :model, :messages, :web_search_enabled
+  attr_accessor :name, :model, :messages, :web_search_enabled, :last_response_id
   attr_reader   :file_path
 
   CHATS_DIR = File.expand_path('../../chats', __FILE__)
@@ -38,6 +38,7 @@ class ChatSession
       model_id:           @model[:id],
       model_name:         @model[:name],
       web_search_enabled: @web_search_enabled,
+      last_response_id:   @last_response_id,
       messages:           @messages,
       saved_at:           Time.now.iso8601
     }
@@ -63,6 +64,7 @@ class ChatSession
       { role: m[:role].to_s, content: m[:content].to_s }
     end
     session.web_search_enabled = data[:web_search_enabled] || false
+    session.last_response_id   = data[:last_response_id]
     session
   rescue StandardError => e
     warn "Warning: could not load #{file_path}: #{e.message}"
