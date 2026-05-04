@@ -504,8 +504,10 @@ class App
   end
 
   def cmd_new
+    prev_ws = @session&.web_search_enabled
     save_session
     @session = ChatSession.new(@model)
+    @session.web_search_enabled = prev_ws if prev_ws
     puts @pastel.green("✓ New chat session: #{@session.name}")
   end
 
