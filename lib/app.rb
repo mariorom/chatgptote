@@ -188,8 +188,9 @@ class App
   # ── Input: raw loop with cursor movement, history, multi-line ────────────
 
   def read_input(prompt_str)
-    @history_pos  = nil
+    @history_pos   = nil
     @history_draft = nil
+    @prev_input_rows = nil   # reset wrap-row counter for each fresh prompt
     buf = +''   # mutable string (file has frozen_string_literal: true)
     cur = 0   # cursor position within buf
 
@@ -197,9 +198,12 @@ class App
 
     loop do
       ch = read_raw_char
-      return nil      if ch.nil?
-      raise Interrupt if ch == "\u0003"
-      raise EOFError  if ch == "\u0004"
+      return nil if ch.nil?
+      if ch == "\u0003"   # Ctrl+C — cancel current input, return to fresh prompt
+        puts
+        return nil
+      end
+      raise EOFError if ch == "\u0004"
 
       case ch
       # ── Submit (Enter = \r) ───────────────────────────────────────────────
@@ -290,35 +294,64 @@ class App
 
   # Redraw the entire input area, then reposition the terminal cursor to `cur`.
   # Multi-line buffers show a "↵ " continuation prefix on each extra line.
+  # Correctly handles text that wraps beyond the terminal width.
   def redraw_input(prompt_str, buf, cur)
+    term_w = (IO.console&.winsize&.last || 80).clamp(8, 999)
+
     visible_prompt = prompt_str.gsub(/\e\[[0-9;]*[mGKJABCDHF]/, '')
     prompt_w = Unicode::DisplayWidth.of(visible_prompt)
 
-    lines = buf.split("\n", -1)
-    lines = [''] if lines.empty?
+    logical_lines = buf.split("\n", -1)
+    logical_lines = [''] if logical_lines.empty?
 
-    # Go to beginning of current line, erase from here to end of screen
-    print "\r\e[J#{prompt_str}"
-    lines.each_with_index do |line, i|
+    # Helper: how many terminal rows does one logical line occupy?
+    line_rows = lambda do |text, prefix_w|
+      total = prefix_w + Unicode::DisplayWidth.of(text)
+      total.zero? ? 1 : ((total - 1) / term_w) + 1
+    end
+
+    # Total terminal rows the rendered input occupies
+    total_term_rows = logical_lines.each_with_index.sum do |line, i|
+      line_rows.call(line, i == 0 ? prompt_w : 4)
+    end
+
+    # ── Move back to the very first row of the previous render ───────────────
+    rows_up = (@prev_input_rows || 1) - 1
+    print "\e[#{rows_up}A" if rows_up > 0
+    print "\r\e[J"
+
+    # ── Render prompt + logical lines ────────────────────────────────────────
+    print prompt_str
+    logical_lines.each_with_index do |line, i|
       print "\n  ↵ " if i > 0
       print line
     end
 
-    # Reposition cursor: figure out which display row/col `cur` maps to
-    cur_lines = buf[0...cur].split("\n", -1)
-    cur_lines = [''] if cur_lines.empty?
-    cur_line  = cur_lines.length - 1          # 0-based row index
-    cur_col   = Unicode::DisplayWidth.of(cur_lines.last)
+    @prev_input_rows = total_term_rows
 
-    # Move up if cursor is above the last display line
-    total_lines = lines.length
-    lines_below = total_lines - 1 - cur_line
-    print "\e[#{lines_below}A" if lines_below > 0
+    # ── Reposition the terminal cursor to `cur` ───────────────────────────────
+    # Determine which logical line and column-within-that-line `cur` falls on.
+    cur_logical_lines = buf[0...cur].split("\n", -1)
+    cur_logical_lines = [''] if cur_logical_lines.empty?
+    cur_logical_idx   = cur_logical_lines.length - 1
+    cur_col_in_logical = Unicode::DisplayWidth.of(cur_logical_lines.last)
 
-    # Move to correct column on that row
-    col = cur_line == 0 ? prompt_w + cur_col : 4 + cur_col
+    # Sum terminal rows for all logical lines before the cursor's logical line.
+    term_row_of_cursor = logical_lines.first(cur_logical_idx).each_with_index.sum do |line, i|
+      line_rows.call(line, i == 0 ? prompt_w : 4)
+    end
+
+    # Within the cursor's logical line, add the wrapped rows before the cursor column.
+    prefix_w_cur   = cur_logical_idx == 0 ? prompt_w : 4
+    abs_col_cursor = prefix_w_cur + cur_col_in_logical
+    term_row_of_cursor += abs_col_cursor / term_w
+    term_col_of_cursor  = abs_col_cursor % term_w
+
+    # We are currently at the last terminal row of the render; move up to cursor row.
+    rows_below_cursor = (total_term_rows - 1) - term_row_of_cursor
+    print "\e[#{rows_below_cursor}A" if rows_below_cursor > 0
     print "\r"
-    print "\e[#{col}C" if col > 0
+    print "\e[#{term_col_of_cursor}C" if term_col_of_cursor > 0
 
     $stdout.flush
   end
