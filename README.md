@@ -68,7 +68,7 @@ Start typing letters to filter, use ↑↓ to navigate, Enter to run, Esc to can
 | `Home` / `End` | Jump to start / end of input |
 | `Delete` | Forward-delete character under cursor |
 | `Backspace` | Delete character before cursor |
-| `Ctrl+C` | Save and exit |
+| `Ctrl+C` | Clear the current prompt |
 | `Ctrl+D` | Save and exit (EOF) |
 | `Esc` | Cancel current command menu |
 

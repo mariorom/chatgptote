@@ -182,7 +182,8 @@ class App
              else
                ''
              end
-    "#{@pastel.cyan.bold(@model[:short_name])}#{ws_tag} #{@pastel.bold('❯')} "
+    session_name = @session&.name ? @pastel.dim(" [#{@session.name}]") : ''
+    "#{@pastel.cyan.bold(@model[:short_name])}#{ws_tag}#{session_name} #{@pastel.bold('❯')} "
   end
 
   # ── Input: raw loop with cursor movement, history, multi-line ────────────
@@ -282,8 +283,8 @@ class App
           redraw_input(prompt_str, buf, cur)
         end
 
-      # ── Printable characters ──────────────────────────────────────────────
-      when /\A[\x20-\x7e\t]\z/
+      # ── Printable characters (any Unicode: accents, CJK, Cyrillic, emoji…) ─
+      when /\A(?:\t|[^\x00-\x1f\x7f])\z/
         @history_pos = nil
         buf.insert(cur, ch)
         cur += 1
@@ -578,6 +579,7 @@ class App
     return unless confirmed
 
     file = @session.file_path
+    prev_web_search = @session.web_search_enabled
 
     # Delete the file if it exists
     if File.exist?(file)
@@ -611,6 +613,7 @@ class App
 
     if selected == :new || selected.nil?
       @session = ChatSession.new(@model)
+      @session.web_search_enabled = prev_web_search && @model[:web_search_capable]
       puts @pastel.green("✓ New chat session: #{@session.name}")
     else
       loaded = ChatSession.load_from_file(selected, MODELS)
@@ -624,11 +627,13 @@ class App
       else
         puts @pastel.red('Failed to load session — starting a new one.')
         @session = ChatSession.new(@model)
+        @session.web_search_enabled = prev_web_search && @model[:web_search_capable]
       end
     end
   rescue TTY::Reader::InputInterrupt, Interrupt
     # Cancelled the picker after deletion — just start fresh
     @session = ChatSession.new(@model)
+    @session.web_search_enabled = prev_web_search && @model[:web_search_capable]
     puts @pastel.green("✓ New chat session: #{@session.name}")
   end
 

@@ -1,6 +1,11 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
+# Ensure multi-byte input/output works regardless of the user's locale
+# (so accents, CJK, Cyrillic, emoji, etc. are read and rendered correctly).
+$stdin.set_encoding(Encoding::UTF_8)
+$stdout.set_encoding(Encoding::UTF_8)
+
 $LOAD_PATH.unshift File.join(__dir__, 'lib')
 
 require 'models_data'
